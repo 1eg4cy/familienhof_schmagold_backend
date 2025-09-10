@@ -1,0 +1,26 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: familienhof
+      POSTGRES_PASSWORD: geheim
+      POSTGRES_DB: familienhof_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  api:
+    build: .
+    depends_on:
+      - postgres
+    command: ["./wait-for-postgres.sh", "postgres", "npm", "start"]
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    volumes:
+      - .:/usr/src/app
+volumes:
+  postgres_data:
