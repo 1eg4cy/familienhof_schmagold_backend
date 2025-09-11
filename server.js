@@ -173,9 +173,6 @@ app.post('/api/calendar', authenticateToken, async (req, res) => {
 
 // -------------------
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`🚀 Server läuft auf Port ${PORT}`);
-});
 
 // --- Serverstart ---
 app.listen(PORT, async () => {
