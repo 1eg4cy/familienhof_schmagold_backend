@@ -165,6 +165,10 @@ app.get('/api/calendar', authenticateToken, async (req, res) => {
   res.json(events);
 });
 
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", uptime: process.uptime() });
+});
+
 app.post('/api/calendar', authenticateToken, async (req, res) => {
   const { title, start_date, end_date } = req.body;
   const [id] = await knex('calendar_events').insert({ title, start_date, end_date });
