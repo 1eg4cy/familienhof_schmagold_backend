@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const knexLib = require('knex');
+const { Pool } = require("pg");
 
 const app = express();
 app.use(helmet());
@@ -36,6 +37,67 @@ if (process.env.DB_MODE === 'POSTGRES') {
     connection: { filename: './database/familienhof.db' },
     useNullAsDefault: true,
   });
+}
+
+// --- PostgreSQL Pool ---
+const pool = new Pool({
+  host: process.env.POSTGRES_HOST,
+  port: process.env.POSTGRES_PORT,
+  user: process.env.POSTGRES_USER,
+  password: process.env.POSTGRES_PASSWORD,
+  database: process.env.POSTGRES_DB,
+});
+
+// --- Auto-Migration ---
+async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS news (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS horses (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      price NUMERIC,
+      available BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS calendar_events (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      start_date DATE NOT NULL,
+      end_date DATE NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Admin prüfen
+  const res = await pool.query("SELECT * FROM users WHERE email = $1", ["admin@familienhof-schmagold.de"]);
+  if (res.rows.length === 0) {
+    const hashed = await bcrypt.hash("robins1412", 10);
+    await pool.query("INSERT INTO users (email, password) VALUES ($1, $2)", [
+      "admin@familienhof-schmagold.de",
+      hashed,
+    ]);
+    console.log("✅ Admin-User erstellt: admin@familienhof-schmagold.de / admin123");
+  }
 }
 
 // -------------------
@@ -113,4 +175,15 @@ app.post('/api/calendar', authenticateToken, async (req, res) => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Server läuft auf Port ${PORT}`);
+});
+
+// --- Serverstart ---
+app.listen(PORT, async () => {
+  console.log(`🚀 Server läuft auf Port ${PORT}`);
+  try {
+    await initDb();
+    console.log("📦 Datenbank ist bereit");
+  } catch (err) {
+    console.error("❌ DB Init Fehler:", err);
+  }
 });
