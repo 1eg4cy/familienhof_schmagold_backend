@@ -12,8 +12,14 @@ const { Pool } = require("pg");
 
 const app = express();
 app.use(helmet());
-app.use(cors());
 app.use(express.json());
+app.use(cors({
+  origin: [
+    "http://localhost:3000", // dein lokales Frontend
+     // später deine echte Domain
+  ],
+  credentials: true
+}));
 
 // Rate limiting
 const limiter = rateLimit({ windowMs: 60*1000, max: 100 });
